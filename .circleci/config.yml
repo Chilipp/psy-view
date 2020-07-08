@@ -125,6 +125,7 @@ workflows:
       - build_linux
       - build_linux:
           python_version: "3.7"
+      - build_docs
 #      - build_windows
 #      - build_windows:
 #          python_version: "3.7"

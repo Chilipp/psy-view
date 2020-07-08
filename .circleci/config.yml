@@ -109,6 +109,8 @@ jobs:
           command: |
             which conda || source $HOME/miniconda3/bin/activate base
             conda env create -f docs/environment.yml
+            conda activate psy-view-docs
+            pip install .
       - run:
           name: Build the docs
           command: |

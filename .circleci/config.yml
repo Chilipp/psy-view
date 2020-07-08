@@ -4,18 +4,41 @@ orbs:
   win: circleci/windows@2.2.0
 
 commands:
+  install_linux:
+    description: "Setup linux environment"
+    steps:
+      - checkout
+      - run:
+          name: install apt requirements
+          command: |
+            sudo apt-get update
+            sudo apt-get install libgl1-mesa-glx libegl1-mesa-dev
+      - run:
+          name: Install conda
+          command: |
+            echo ""
+            echo "Installing a fresh version of Miniconda."
+            MINICONDA_URL="https://repo.continuum.io/miniconda"
+            MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
+            curl -L -O "${MINICONDA_URL}/${MINICONDA_FILE}"
+            bash $MINICONDA_FILE -bp $HOME/miniconda3
   configure_conda:
     description: "Install conda on the sytem"
+    parameters:
+      channels:
+        type: string
+        default: conda-forge psyplot
     steps:
       - run:
           name: Configure
           command: |
             which conda || source $HOME/miniconda3/bin/activate base
             conda config --set always_yes yes --set changeps1 no
-            conda config --add channels conda-forge
-            conda config --add channels psyplot
             conda update -q conda
             conda install conda-build anaconda-client conda-verify
+            for CHANNEL in << parameters.channels >>; do
+              conda config --add channels ${CHANNEL}
+            done
             if [[ $CIRCLE_TAG == "" ]]; then
               conda config --add channels psyplot/label/master;
               conda config --add channels psyplot/label/${CIRCLE_BRANCH};
@@ -70,24 +93,30 @@ jobs:
     working_directory: ~/test
     machine: true
     steps:
-      - checkout
-      - run:
-          name: install apt requirements
-          command: |
-            sudo apt-get update
-            sudo apt-get install libgl1-mesa-glx libegl1-mesa-dev
-      - run:
-          name: Install conda
-          command: |
-            echo ""
-            echo "Installing a fresh version of Miniconda."
-            MINICONDA_URL="https://repo.continuum.io/miniconda"
-            MINICONDA_FILE="Miniconda3-latest-Linux-x86_64.sh"
-            curl -L -O "${MINICONDA_URL}/${MINICONDA_FILE}"
-            bash $MINICONDA_FILE -bp $HOME/miniconda3
+      - install_linux
       - configure_conda
       - build_recipe:
           python_version: << parameters.python_version >>
+  build_docs:
+    working_directory: ~/test
+    machine: true
+    steps:
+      - install_linux
+      - configure_conda:
+          channels: defaults
+      - run:
+          name: Create environment
+          command: conda env create -f docs/environment.yml
+      - run:
+          name: Build the docs
+          command: |
+            which conda || source $HOME/miniconda3/bin/activate base
+            cd docs
+            conda activate psy-view-docs
+            make html
+      - store_artifacts:
+          path: ~/repo/docs/_build/html
+          destination: docs
 
 workflows:
   version: 2.1

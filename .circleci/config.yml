@@ -106,7 +106,9 @@ jobs:
           channels: defaults
       - run:
           name: Create environment
-          command: conda env create -f docs/environment.yml
+          command: |
+            which conda || source $HOME/miniconda3/bin/activate base
+            conda env create -f docs/environment.yml
       - run:
           name: Build the docs
           command: |
